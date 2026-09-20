@@ -85,7 +85,10 @@ import {
 import { getComboStepTarget } from "@/lib/combos/steps";
 import { DEAD_COMBO_CONFIG_KEYS } from "@/lib/combos/deadConfigKeys";
 import { modelFamily } from "@/lib/combos/invariants";
-import { resolveCanonicalProviderModel } from "@omniroute/open-sse/services/model.ts";
+// Client-safe alias lookup — do NOT import open-sse/services/model.ts here: it dynamically
+// imports the DB layer, which drags playwright/sharp/node builtins into the browser bundle
+// and breaks `next build` (Turbopack "Can't resolve 'net'").
+import { resolveProviderId } from "@/shared/constants/providers";
 import { resolveServerErrorMessage } from "@/lib/api/serverErrorMessage";
 import { useTranslations } from "next-intl";
 
@@ -680,8 +683,8 @@ function computeAllowedRestrictionSync(
       .map((m) => {
         if (m.providerId) return m.providerId;
         if (typeof m.model !== "string" || !m.model.includes("/")) return "";
-        const [aliasOrProvider, ...rest] = m.model.split("/");
-        return resolveCanonicalProviderModel(aliasOrProvider, rest.join("/")).provider || "";
+        const aliasOrProvider = m.model.split("/")[0];
+        return resolveProviderId(aliasOrProvider) || "";
       })
       .filter((p): p is string => Boolean(p));
     result.allowedProviders = Array.from(new Set([...existingProviders, ...stepProviders]));
