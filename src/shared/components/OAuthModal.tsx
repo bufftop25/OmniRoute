@@ -30,6 +30,7 @@ import { getPasteTokenCopyKeys } from "@/shared/components/oauthModal/pasteToken
 import { parseGrokCliPasteToken } from "@/lib/oauth/utils/grokCliAuthJson";
 import { buildGoogleLoopbackHint } from "@/lib/oauth/utils/googleLoopbackHint";
 import { errorMessageFromBody } from "@/shared/utils/fetchError";
+import { parseCallbackInput } from "@/lib/oauth/utils/callbackInput";
 import {
   buildPkceLoopbackMismatchHint,
   type PkceLoopbackMismatchHint,
@@ -965,23 +966,13 @@ export default function OAuthModal({
         return;
       }
 
-      let code = null;
-      let state = authData?.state || null;
-      let errorParam = null;
-      let errorDescription = null;
-
-      try {
-        const url = new URL(input);
-        code = url.searchParams.get("code");
-        state = url.searchParams.get("state") || url.hash.replace(/^#/, "") || state;
-        errorParam = url.searchParams.get("error");
-        errorDescription = url.searchParams.get("error_description");
-      } catch {
-        // Claude Code remote auth may provide a raw "Authentication Code" like code#state.
-        const [rawCode, rawState] = input.split("#", 2);
-        code = rawCode || null;
-        state = rawState || state;
-      }
+      // Tolerant of a paste without "http://" (the address bar hides it), of a bare
+      // `code=...&scope=...` tail, quotes and a raw code#state. See callbackInput.ts.
+      const parsed = parseCallbackInput(input);
+      const code = parsed.code;
+      const state = parsed.state || authData?.state || null;
+      const errorParam = parsed.error;
+      const errorDescription = parsed.errorDescription;
 
       if (errorParam) {
         throw new Error(errorDescription || errorParam);
