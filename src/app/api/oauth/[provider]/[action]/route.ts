@@ -46,6 +46,7 @@ import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/error";
 import { GITLAB_DUO_OAUTH_SETUP_MESSAGE } from "@/shared/constants/gitlabDuoSetupMessage";
 import { keychainImportOnlyGuard } from "./keychainImportOnly";
 import { buildRemoteOAuthHint } from "./remoteOAuthHint";
+import { describeTokenExchangeFailure } from "@/lib/oauth/utils/tokenExchangeError";
 
 // Persist one callback server per provider across Next.js HMR reloads.
 if (!globalThis.__pkceCallbackStates) {
@@ -991,6 +992,13 @@ export async function POST(
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (error) {
+    // An OAuth error body from the provider (e.g. invalid_grant / "Malformed auth code.") is a bad
+    // or expired code, not a server crash: say so instead of a bare 500.
+    const exchangeFailure = describeTokenExchangeFailure(error);
+    if (exchangeFailure) {
+      console.error("OAuth token exchange rejected:", exchangeFailure.message);
+      return NextResponse.json({ error: exchangeFailure.message }, { status: 400 });
+    }
     console.error("OAuth POST error:", error);
     const detail = sanitizeErrorMessage(error instanceof Error ? error.message : String(error));
     return NextResponse.json({ error: detail || "Internal server error" }, { status: 500 });
