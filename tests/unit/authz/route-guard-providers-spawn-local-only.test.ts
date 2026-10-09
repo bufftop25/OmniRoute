@@ -28,16 +28,12 @@ test("isLocalOnlyPath: /api/providers/validate, /import, /bulk are NOT path-lock
   // tunnel. The one spawn they can reach (webProvidersB.ts, Devin CLI fallback) is gated at its
   // call site instead (allowLocalSpawn, see the next test and
   // devin-cli-fallback-spawn-local-only-15159.test.ts).
-  for (const p of [
-    "/api/providers/validate",
-    "/api/providers/import",
-    "/api/providers/bulk",
-    "/api/providers/validate/",
-    "/api/providers/import/",
-    "/api/providers/bulk/",
-  ]) {
-    assert.equal(isLocalOnlyPath(p, "POST"), false, p);
-  }
+  assert.equal(isLocalOnlyPath("/api/providers/validate", "POST"), false);
+  assert.equal(isLocalOnlyPath("/api/providers/import", "POST"), false);
+  assert.equal(isLocalOnlyPath("/api/providers/bulk", "POST"), false);
+  assert.equal(isLocalOnlyPath("/api/providers/validate/", "POST"), false);
+  assert.equal(isLocalOnlyPath("/api/providers/import/", "POST"), false);
+  assert.equal(isLocalOnlyPath("/api/providers/bulk/", "POST"), false);
 });
 
 test("S-01: validate, import and bulk derive allowLocalSpawn from the trusted peer locality", async () => {
