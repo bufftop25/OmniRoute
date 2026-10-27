@@ -5,8 +5,10 @@ import { isModelAdvertisedByConnection } from "@/domain/connectionModelRules";
  * per-connection synced inventory is authoritative for routing. Antigravity: only
  * Ultra accounts are offered the 5.5 Claude models; the rest list 4.6 only and answer
  * 403/404/429 to a 5.5 request, burning a retry (and a cooldown) per account.
+ * `agy` connections are served from the same account pool as `antigravity`, and a model can
+ * be advertised only by them (Gemini 4 Argon), so both inventories are judged together.
  */
-const PER_ACCOUNT_CATALOG_PROVIDERS = new Set(["antigravity"]);
+const PER_ACCOUNT_CATALOG_PROVIDERS = new Set(["antigravity", "agy"]);
 
 export function isPerAccountCatalogProvider(providerId: unknown): boolean {
   return typeof providerId === "string" && PER_ACCOUNT_CATALOG_PROVIDERS.has(providerId);

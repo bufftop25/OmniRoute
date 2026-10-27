@@ -140,3 +140,25 @@ test("an account the operator pinned is not vetoed, but a combo-derived pin stil
   const automatic = await auth.getProviderCredentials(PROVIDER, null, null, OPUS55);
   assert.equal(idOf(automatic), ultra, "automatic selection still follows the live inventory");
 });
+
+test("a model only the agy accounts list (Gemini 4 Argon) skips the antigravity-provider accounts", async () => {
+  await resetStorage();
+  const ARGON = "gemini-4-argon-low";
+  const proAccount = await account("pro", 1, OLD);
+  const agy = (await providersDb.createProviderConnection({
+    provider: "agy",
+    authType: "oauth",
+    name: "ultra-agy",
+    accessToken: "token-ultra-agy",
+    priority: 2,
+    isActive: true,
+  })) as { id: string };
+  await modelsDb.replaceSyncedAvailableModelsForConnection("agy", agy.id, [
+    { id: ARGON, name: ARGON },
+    ...OLD.map((id) => ({ id, name: id })),
+  ]);
+
+  const first = await auth.getProviderCredentials(PROVIDER, null, null, ARGON);
+  assert.equal(idOf(first), agy.id, "only the agy account advertises Argon");
+  assert.notEqual(idOf(first), proAccount);
+});
