@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { getSettings } from "@/lib/db/settings";
 import { resolveResilienceSettings } from "@/lib/resilience/settings";
 import { isConnectionAutoProtected } from "@omniroute/open-sse/services/rateLimitManager/autoProtection.ts";
+import { sanitizeCredentialInput } from "@/shared/utils/credentialInput";
 export const dynamic = "force-dynamic";
 import { getAuditRequestContext, logAuditEvent } from "@/lib/compliance/index";
 import {
@@ -233,7 +234,7 @@ export async function POST(request: Request) {
     }
     const {
       provider: requestedProvider,
-      apiKey,
+      apiKey: rawApiKey,
       name,
       priority,
       globalPriority,
@@ -242,6 +243,7 @@ export async function POST(request: Request) {
       providerSpecificData: incomingPsd,
       allowNoCredential,
     } = validation.data;
+    const apiKey = sanitizeCredentialInput(rawApiKey);
     const provider = resolveProviderId(requestedProvider);
     if (provider === "cloudflare-ai" && Object.hasOwn(body, "accountId")) {
       return NextResponse.json(
