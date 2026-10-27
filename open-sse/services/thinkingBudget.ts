@@ -64,6 +64,11 @@ export const THINKING_LEVEL_MAP: Record<string, number> = {
 
 export type Gemini38ThinkingLevel = "low" | "medium" | "high";
 
+/** Gemini 4 Argon documents only the low/medium/high levels; it has no "off" and no minimal. */
+export function isGeminiArgonModel(model: string): boolean {
+  return /(?:^|[\/])gemini-4-argon(?:$|-)/i.test(model);
+}
+
 /** Gemini 3.8 Flash, Gemini 4 Argon, and future thinking-level models (e.g. vertex/gemini-4-argon). */
 export function isGemini38Model(model: string): boolean {
   return /(?:^|[\/])gemini-(?:3\.8|4)(?:$|[-.])/i.test(model);
@@ -102,14 +107,16 @@ export function gemini38ThinkingConfig(
 ):
   | { thinkingLevel: Gemini38ThinkingLevel; includeThoughts?: boolean }
   | { thinkingBudget: number; includeThoughts: boolean } {
-  if (budget <= 0) {
+  if (budget <= 0 && !isGeminiArgonModel(model)) {
     return { thinkingBudget: 0, includeThoughts: false };
   }
   const thinkingConfig: {
     thinkingLevel: Gemini38ThinkingLevel;
     includeThoughts?: boolean;
   } = {
-    thinkingLevel: gemini38ThinkingLevelFromBudget(model, budget),
+    // Argon cannot switch thinking off (a zero or tiny budget becomes THINKING_LEVEL_MINIMAL,
+    // which upstream rejects with a 400), so "none" is sent as its lowest level.
+    thinkingLevel: budget <= 0 ? "low" : gemini38ThinkingLevelFromBudget(model, budget),
   };
   if (clientAskedForThoughts(body)) {
     thinkingConfig.includeThoughts = true;
