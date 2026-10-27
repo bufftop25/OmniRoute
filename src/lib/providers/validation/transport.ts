@@ -224,6 +224,12 @@ export function toValidationErrorResult(error: unknown) {
   } catch {
     // Diagnostic enrichment is advisory; never let it break error reporting.
   }
+  // A credential holding a non-Latin-1 character (an invisible one that survived, a homoglyph) makes
+  // fetch throw while building the Authorization header; say so instead of a cryptic ByteString error.
+  if (typeof rawMessage === "string" && /ByteString/i.test(rawMessage)) {
+    rawMessage =
+      "The API key contains a character that is not valid in an HTTP header. Re-type or re-paste it as plain text.";
+  }
   const message = sanitizeErrorMessage(rawMessage);
   let statusCode: number | null = null;
   let timeout = false;

@@ -16,6 +16,7 @@
  * `|` stays intact. Lines missing the `accountId` or `apiKey` field are flagged
  * as warnings and skipped.
  */
+import { sanitizeCredentialInput } from "./credentialInput";
 
 export interface BulkApiKeyEntry {
   name: string;
@@ -58,7 +59,7 @@ function parseAccountKeyLine(raw: string, nextName: () => string): ParsedKeyLine
 function parseKeyLine(raw: string, nextName: () => string): ParsedKeyLine {
   const pipeIdx = raw.indexOf("|");
   const namePart = pipeIdx === -1 ? "" : raw.slice(0, pipeIdx).trim();
-  const apiKey = pipeIdx === -1 ? raw : raw.slice(pipeIdx + 1).trim();
+  const apiKey = sanitizeCredentialInput(pipeIdx === -1 ? raw : raw.slice(pipeIdx + 1).trim());
   const name = namePart || nextName();
   if (!apiKey) return { warning: "empty apiKey, skipped" };
   return { name, apiKey };

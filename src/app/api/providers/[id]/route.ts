@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeCredentialInput } from "@/shared/utils/credentialInput";
 import { getAuditRequestContext, logAuditEvent } from "@/lib/compliance/index";
 import {
   getProviderAuditTarget,
@@ -147,7 +148,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       globalPriority,
       defaultModel,
       isActive,
-      apiKey,
+      apiKey: rawApiKey,
       testStatus,
       lastError,
       lastErrorAt,
@@ -167,6 +168,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       providerSpecificData: incomingPsd,
       rateLimitOverrides,
     } = body;
+    const apiKey = sanitizeCredentialInput(rawApiKey);
 
     const existing = (await getCachedProviderConnectionById(id)) as Record<string, any> | null;
     if (!existing) {

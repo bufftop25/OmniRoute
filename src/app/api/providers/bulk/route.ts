@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeCredentialInput } from "@/shared/utils/credentialInput";
 import { getAuditRequestContext, logAuditEvent } from "@/lib/compliance/index";
 import {
   getProviderAuditTarget,
@@ -58,12 +59,16 @@ export async function POST(request: Request) {
 
   const {
     provider,
-    entries,
+    entries: rawEntries,
     priority,
     globalPriority,
     providerSpecificData: incomingPsd,
     validateKeys,
   } = validation.data;
+  const entries = rawEntries.map((entry) => ({
+    ...entry,
+    apiKey: sanitizeCredentialInput(entry.apiKey),
+  }));
 
   const retirementResponse = rejectRetiredCommonChatGptWebProvider(provider);
   if (retirementResponse) return retirementResponse;

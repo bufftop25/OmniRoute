@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sanitizeCredentialInput } from "@/shared/utils/credentialInput";
 import { sanitizeErrorMessage } from "@omniroute/open-sse/utils/errorSanitization.ts";
 import { requireManagementAuth } from "@/lib/api/requireManagementAuth";
 import { getAuditRequestContext, logAuditEvent } from "@/lib/compliance/index";
@@ -56,7 +57,7 @@ export async function POST(request) {
     }
     const {
       provider,
-      apiKey,
+      apiKey: rawApiKey,
       validationModelId,
       customUserAgent,
       baseUrl: bodyBaseUrl,
@@ -68,6 +69,7 @@ export async function POST(request) {
       tunnelId,
       connectorName,
     } = validation.data;
+    const apiKey = sanitizeCredentialInput(rawApiKey);
 
     const retirementResponse = rejectRetiredCommonChatGptWebProvider(provider);
     if (retirementResponse) return retirementResponse;
