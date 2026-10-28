@@ -2,6 +2,7 @@ import { splitCodexReasoningSuffix } from "@omniroute/open-sse/executors/codex/r
 import { isRegisteredImageModel } from "@omniroute/open-sse/config/imageRegistry";
 import { isModelAdvertisedByConnection } from "@/domain/connectionModelRules";
 import { isSelfHostedChatProvider } from "@/shared/constants/providers";
+import { inventoryOrFailOpen, isPerAccountCatalogProvider } from "./perAccountCatalogFilter.ts";
 import { type ProviderConnectionView } from "@/lib/db/providers/lazyConnectionView";
 import {
   getSyncedAvailableModelsByConnection,
@@ -60,7 +61,9 @@ export async function loadAdvertisedModelsForConnections(
       .filter(
         (p): p is string =>
           typeof p === "string" &&
-          (isSelfHostedChatProvider(p) || (p === "codex" && !isCodexImageModel(requestedModel)))
+          (isSelfHostedChatProvider(p) ||
+            (p === "codex" && !isCodexImageModel(requestedModel)) ||
+            isPerAccountCatalogProvider(p))
       )
   );
   if (inventoryProviders.size === 0) return advertised;
@@ -83,10 +86,17 @@ export async function loadAdvertisedModelsForConnections(
           if (connection.provider === providerId) advertised.set(connection.id, new Set());
         }
       }
+      const providerInventory = new Map<string, Set<string>>();
       for (const [connectionId, models] of Object.entries(byConnection)) {
         if (!Array.isArray(models) || models.length === 0) continue;
-        advertised.set(connectionId, new Set(models.map((m) => m.id)));
+        providerInventory.set(connectionId, new Set(models.map((m) => m.id)));
       }
+      // Per-account catalogs (Antigravity plans): when no account advertises the model the
+      // lists are stale/incomplete, so fail open instead of emptying the pool.
+      const effective = isPerAccountCatalogProvider(providerId)
+        ? inventoryOrFailOpen(requestedModel, providerInventory)
+        : providerInventory;
+      for (const [connectionId, ids] of effective) advertised.set(connectionId, ids);
     })
   );
 
