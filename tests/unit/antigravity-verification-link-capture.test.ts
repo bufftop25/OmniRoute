@@ -16,7 +16,8 @@ const core = await import("../../src/lib/db/core.ts");
 const providersDb = await import("../../src/lib/db/providers.ts");
 const { sendAntigravityRequest } =
   await import("../../open-sse/executors/antigravity/executeAttempt.ts");
-const { testOAuthConnection } = await import("../../src/app/api/providers/[id]/test/route.ts");
+const { testOAuthConnection, testSingleConnection } =
+  await import("../../src/app/api/providers/[id]/test/route.ts");
 
 const TOKEN = "AKgnsbtCAPTURETOKEN0123456789";
 const LINK = `https://accounts.google.com/v3/signin/continue?plt=${TOKEN}&flowName=GlifWebSignIn`;
@@ -154,4 +155,21 @@ test("connection test: a 403 VALIDATION_REQUIRED stores the link and never logs 
     logged.every((line) => !line.includes(TOKEN)),
     "the continuation token must never reach the logs"
   );
+});
+
+test("connection test: a passing probe clears a stored verification link", async () => {
+  const id = await makeConn();
+  await providersDb.updateProviderConnection(id, {
+    providerSpecificData: { projectId: "proj-1", verificationUrl: LINK, verificationAt: "x" },
+  });
+  assert.equal(await storedLink(id), LINK, "precondition: the link is stored");
+  const restore = stubFetch(200, 'data: {"response":{"candidates":[]}}\n\n');
+  let result: { valid: boolean };
+  try {
+    result = await testSingleConnection(id);
+  } finally {
+    restore();
+  }
+  assert.equal(result.valid, true);
+  assert.equal(await storedLink(id), undefined, "a verified account leaves the pending filter");
 });
