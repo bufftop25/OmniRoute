@@ -13,7 +13,10 @@ import { buildQoderCliNotFoundHint } from "@omniroute/open-sse/services/qoderCli
 // Use the shared open-sse token refresh with built-in dedup/race-condition cache
 import { getAccessToken, isPassiveCodex } from "@omniroute/open-sse/services/tokenRefresh.ts";
 import { redactVerificationUrls } from "@omniroute/open-sse/services/antigravityVerification.ts";
-import { recordAntigravityVerificationUrl } from "@omniroute/open-sse/handlers/chatCore/antigravityVerificationState.ts";
+import {
+  clearAntigravityVerificationUrl,
+  recordAntigravityVerificationUrl,
+} from "@omniroute/open-sse/handlers/chatCore/antigravityVerificationState.ts";
 import { rotationGroupFor } from "@omniroute/open-sse/services/refreshSerializer.ts";
 import { saveCallLog } from "@/lib/usageDb";
 import { shouldHideLogs } from "@/lib/tokenHealthCheck";
@@ -1135,6 +1138,18 @@ export async function testSingleConnection(
   });
   // Once persisted, same gate as the error state: a valid probe also closes a DEGRADED breaker.
   if (clearErrorState) clearTestedBreakers(provider, connectionId);
+  // A passing probe means Google lifted the "verify your account" challenge: drop the stored
+  // link so the Verify button and the pending-verification filter clear without waiting for
+  // the next successful chat request.
+  if (result.valid) {
+    await clearAntigravityVerificationUrl(
+      provider,
+      connectionId,
+      latest.providerSpecificData
+    ).catch(() => {
+      console.warn("[ConnectionTest] Could not clear the antigravity verification link");
+    });
+  }
 
   // Sync to cloud if token was refreshed
   if (result.refreshed) {
