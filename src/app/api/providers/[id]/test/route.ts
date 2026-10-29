@@ -12,6 +12,8 @@ import { getCliRuntimeStatus } from "@/shared/services/cliRuntime";
 import { buildQoderCliNotFoundHint } from "@omniroute/open-sse/services/qoderCliResolve.ts";
 // Use the shared open-sse token refresh with built-in dedup/race-condition cache
 import { getAccessToken, isPassiveCodex } from "@omniroute/open-sse/services/tokenRefresh.ts";
+import { redactVerificationUrls } from "@omniroute/open-sse/services/antigravityVerification.ts";
+import { recordAntigravityVerificationUrl } from "@omniroute/open-sse/handlers/chatCore/antigravityVerificationState.ts";
 import { rotationGroupFor } from "@omniroute/open-sse/services/refreshSerializer.ts";
 import { saveCallLog } from "@/lib/usageDb";
 import { shouldHideLogs } from "@/lib/tokenHealthCheck";
@@ -844,8 +846,20 @@ export async function testOAuthConnection(
     if (connection.provider === "antigravity" || connection.provider === "agy") {
       console.log(
         `[OAuthTest] ${connection.provider} probe returned HTTP ${res.status}:`,
-        bodyText.slice(0, 500)
+        redactVerificationUrls(bodyText).slice(0, 500)
       );
+      // The probe is the only place the dashboard Test and the hourly credential-health run
+      // see Google's raw 403, so keep its "verify your account" link for the Verify button.
+      if (res.status === 403) {
+        await recordAntigravityVerificationUrl({
+          provider: connection.provider,
+          connectionId: connection.id,
+          upstreamErrorBody: bodyText,
+          message: "",
+        }).catch(() => {
+          console.warn("[OAuthTest] Could not store the antigravity verification link");
+        });
+      }
     }
 
     // #13010: a Cloud Code envelope failure answers with its own JSON `error.message`.
