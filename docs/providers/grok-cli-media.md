@@ -1,3 +1,9 @@
+---
+title: "Grok Build OAuth media"
+version: 3.8.53
+lastUpdated: 2026-10-29
+---
+
 # Grok Build OAuth media
 
 Connect **Grok Build** (`grok-cli`) using its existing OAuth flow. Media requests
